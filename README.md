@@ -1,4 +1,4 @@
-# c lib for LumenRadio's TiMo(two)
+# C lib for LumenRadio's TiMo(two)
 Library for controlling the lumenradio timotwo module thru spi. 
 
 ### device info 
