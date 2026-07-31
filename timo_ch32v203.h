@@ -25,13 +25,13 @@ void begin_timo(timo_t *fn)
     fn->cs_h = &timo_csh;
     fn->cs_l = &timo_csl;
     fn->irq_pinCl = &timoirq;
-    fn->waitUs = &micros;
+    fn->waitUs = &delay_micros;
 }
 
-#ifndef micros
+#ifndef delay_micros
 // very crude
-void micros(unsigned long long num);
-void micros(unsigned long long num)
+void delay_micros(unsigned long long num);
+void delay_micros(unsigned long long num)
 {
     volatile long long st = 0;
     num = num * 144; // 144mhz clock?

@@ -87,11 +87,13 @@ unsigned char TiMo_writeRegP(unsigned char cmd, unsigned char *data, unsigned ch
     // ce line high
     fn->cs_h();
 
+    fn->waitUs(100);
+
     // check if irq is busy
     while ((irqstatus & TIMO_IRQF_SPI_BUSY))
     {
         fn->cs_l();
-        fn->waitUs(5);
+        fn->waitUs(10);
 
         irqstatus = fn->spi_send_rec(cmd);
         times++;
@@ -106,10 +108,11 @@ unsigned char TiMo_writeRegP(unsigned char cmd, unsigned char *data, unsigned ch
     }
 
     while ((fn->irq_pinCl() == 0) && (count < 80000))
+    // ;
     // while ((GPIO_ReadInputPin(timo_irqPin)))
     {
         count++;
-        fn->waitUs(5);
+        fn->waitUs(10);
     }
     // set ce low
     fn->cs_l();
