@@ -13,7 +13,7 @@ unsigned char TiMo_readRegP(unsigned char cmd, unsigned char *data, unsigned cha
     // set ce line
     fn->cs_l();
     // delay as specified in datasheet for 4 us
-    fn->waitUs(5); // spec says 4?
+    fn->waitUs(8); // spec says 4?
     // write command
     irqstatus = fn->spi_send_rec(cmd);
 
@@ -25,28 +25,34 @@ unsigned char TiMo_readRegP(unsigned char cmd, unsigned char *data, unsigned cha
     // while ((irqstatus & 0xff))
     {
         fn->cs_l();
-        fn->waitUs(4);
+        fn->waitUs(8);
         irqstatus = fn->spi_send_rec(cmd);
         times++;
         fn->cs_h();
-        if (times > 100)
+        if (times > 20)
             break;
     }
-    if (times > 100)
+    if (times > 20)
     {
         return 1;
     }
 
-    while ((fn->irq_pinCl() == 0) && (count < 80000))
+    while ((fn->irq_pinCl() == 0) && (count < 200))
     {
         count++;
         fn->waitUs(10);
+        if (count == 190)
+        {
+            fn->cs_h();
+            fn->waitUs(10);
+            return 2;
+        }
     }
 
     // set ce low
     fn->cs_l();
     // delay as specified in datasheet for 4 us
-    fn->waitUs(5);
+    fn->waitUs(8);
 
     irqstatus = fn->spi_send_rec(TIMO_COMMAND_NOP); // write (nothing)
 
@@ -79,7 +85,7 @@ unsigned char TiMo_writeRegP(unsigned char cmd, unsigned char *data, unsigned ch
     fn->cs_l();
 
     // delay as specified in datasheet for 4 us
-    fn->waitUs(5);
+    fn->waitUs(10);
 
     // write command get irq status as return
     irqstatus = fn->spi_send_rec(cmd);
@@ -87,7 +93,7 @@ unsigned char TiMo_writeRegP(unsigned char cmd, unsigned char *data, unsigned ch
     // ce line high
     fn->cs_h();
 
-    fn->waitUs(100);
+    fn->waitUs(10);
 
     // check if irq is busy
     while ((irqstatus & TIMO_IRQF_SPI_BUSY))
@@ -104,20 +110,26 @@ unsigned char TiMo_writeRegP(unsigned char cmd, unsigned char *data, unsigned ch
     }
     if (times > 10)
     {
+        fn->cs_h();
+        fn->waitUs(10);
         return 1;
     }
 
-    while ((fn->irq_pinCl() == 0) && (count < 80000))
-    // ;
-    // while ((GPIO_ReadInputPin(timo_irqPin)))
+    while ((fn->irq_pinCl() == 0) && (count < 200))
     {
         count++;
         fn->waitUs(10);
+        if (count == 190)
+        {
+            fn->cs_h();
+            fn->waitUs(10);
+            return 2;
+        }
     }
     // set ce low
     fn->cs_l();
 
-    fn->waitUs(5);
+    fn->waitUs(10);
 
     irqstatus = fn->spi_send_rec(TIMO_COMMAND_NOP);
 
@@ -139,18 +151,20 @@ unsigned char TiMo_writeRegP(unsigned char cmd, unsigned char *data, unsigned ch
     return 0;
 }
 
-unsigned char TiMo_readReg8(unsigned char cmd, timo_t *fn)
+unsigned short TiMo_readReg8(unsigned char cmd, timo_t *fn)
 {
     unsigned char d[] = {TIMO_COMMAND_NOP};
 
-    TiMo_readRegP(cmd, d, 1, fn);
-    return d[0];
+    unsigned short st = TiMo_readRegP(cmd, d, 1, fn);
+    st = st << 8;
+    st |= d[0];
+    return st;
 }
 
 // disererd register, poter to data, lenght of data
-void TiMo_writeReg8(unsigned char cmd, unsigned char data, timo_t *fn)
+unsigned char TiMo_writeReg8(unsigned char cmd, unsigned char data, timo_t *fn)
 {
-    TiMo_writeRegP(cmd, &data, 1, fn);
+    return TiMo_writeRegP(cmd, &data, 1, fn);
 }
 
 // lets just say an addres should start at 0?
@@ -186,7 +200,7 @@ void TiMo_resetIRQ(unsigned char irq, timo_t *fn)
     TiMo_writeReg8(TIMO_COMMAND_WRITE_REG | TIMO_REG_IRQ_MASK, curIRQ, fn);
 }
 
-unsigned char TiMo_getIRQStatus(timo_t *fn)
+unsigned short TiMo_getIRQStatus(timo_t *fn)
 {
     return TiMo_readReg8(TIMO_COMMAND_READ_REG | TIMO_REG_IRQ_FLAGS, fn);
 }
@@ -215,9 +229,9 @@ unsigned char TiMo_getExtIRQStatus(timo_t *fn)
     return TiMo_readReg8(TIMO_COMMAND_READ_REG | TIMO_REG_EXT_IRQ_FLAGS, fn);
 }
 
-unsigned char TiMo_getStatus(timo_t *fn)
+unsigned short TiMo_getStatus(timo_t *fn)
 {
-    return TiMo_readReg8(TIMO_COMMAND_READ_REG | TIMO_REG_STATUS, fn);
+    return (TiMo_readReg8(TIMO_COMMAND_READ_REG | TIMO_REG_STATUS, fn));
 }
 
 // configure timo // use
@@ -245,15 +259,20 @@ void TiMo_setModeTX(unsigned char a, timo_t *fn)
         d = d & ~(TIMO_CONFIG_RADIO_TX_RX_MODE);
         // TiMo_writeReg8(TIMO_COMMAND_WRITE_REG | TIMO_REG_CONFIG, d);
     }
+    // while (TiMo_readReg8(TIMO_COMMAND_READ_REG | TIMO_REG_CONFIG, fn) != d)
+    // {
+    //     TiMo_writeReg8(TIMO_COMMAND_WRITE_REG | TIMO_REG_CONFIG, d, fn);
+    // }
+
     TiMo_writeReg8(TIMO_COMMAND_WRITE_REG | TIMO_REG_CONFIG, d, fn);
 }
 
 // 0xff sets no battery, 0-100DEC sets level in %
-void TiMo_setBattery(unsigned char level, timo_t *fn)
+unsigned char TiMo_setBattery(unsigned char level, timo_t *fn)
 {
     if ((level > 100) && (level < 0xff))
         level = 100;
-    TiMo_writeReg8(TIMO_COMMAND_WRITE_REG | TIMO_REG_BATTERY, level, fn);
+    return TiMo_writeReg8(TIMO_COMMAND_WRITE_REG | TIMO_REG_BATTERY, level, fn);
 }
 
 void TiMo_setRFPower(unsigned char level, timo_t *fn)
@@ -334,44 +353,57 @@ void TiMo_setOEMInfo(unsigned short vid, unsigned short pid, timo_t *fn)
 }
 
 // read dmx data
-void TiMo_readDMX(unsigned char *d, unsigned short len, timo_t *fn)
+unsigned char TiMo_readDMX(unsigned char *d, unsigned short len, timo_t *fn)
 {
     // unsigned char tmpdata[128];
+    unsigned char r;
     unsigned short count = 0;
     while (len)
     {
         if (len > 128)
         {
-            TiMo_readRegP(TIMO_COMMAND_READ_DMX, (unsigned char *)(d + count), 128, fn);
+            r = TiMo_readRegP(TIMO_COMMAND_READ_DMX, (unsigned char *)(d + count), 128, fn);
             len = len - 128;
 
             count = count + 128;
         }
         else
         {
-            TiMo_readRegP(TIMO_COMMAND_READ_DMX, (unsigned char *)(d + count), len, fn);
+            r = TiMo_readRegP(TIMO_COMMAND_READ_DMX, (unsigned char *)(d + count), len, fn);
             len = 0;
         }
     }
+    return r;
 }
 
-void TiMo_writeDMX(unsigned char *d, unsigned short len, timo_t *fn)
+unsigned char TiMo_writeDMX(unsigned char *d, unsigned short len, timo_t *fn)
 {
     unsigned char t = 0;
+    unsigned char r;
     while (len)
     {
         if (len > 128)
         {
-            TiMo_writeRegP(TIMO_COMMAND_WRITE_DMX, d + (t * 128), 128, fn);
+            r = TiMo_writeRegP(TIMO_COMMAND_WRITE_DMX, d + (t * 128), 128, fn);
             len = len - 128;
             t++;
         }
         else
         {
-            TiMo_writeRegP(TIMO_COMMAND_WRITE_DMX, d + (t * 128), len, fn);
+            r = TiMo_writeRegP(TIMO_COMMAND_WRITE_DMX, d + (t * 128), len, fn);
             len = 0;
         }
     }
+}
+
+unsigned char TiMo_setName(char *p, timo_t *fn)
+{
+    return TiMo_writeRegP(TIMO_COMMAND_WRITE_REG | TIMO_REG_DEVICE_NAME, p, 32, fn);
+}
+
+unsigned char TiMo_getName(char *p, timo_t *fn)
+{
+    return TiMo_readRegP(TIMO_REG_DEVICE_NAME, p, 32, fn);
 }
 
 void TiMo_setBLEStatus(unsigned char d, timo_t *fn)

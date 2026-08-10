@@ -14,7 +14,6 @@
 #define TIMO_COMMAND_WRITE_RDM 0x92
 #define TIMO_COMMAND_WRITE_RXTX 0x94
 
-
 #define TIMO_COMMAND_NOP 0xFF
 
 // registers
@@ -39,6 +38,9 @@
 #define TIMO_REG_BATTERY 0x32
 #define TIMO_REG_UNIVERSE_COLOR 0x33
 #define TIMO_REG_OEM_INFO 0x34
+#define TIMO_REG_DEVICE_NAME 0x36
+#define TIMO_REG_UNI_NAME 0x37
+#define TIMO_REG_INSTALLED_OPTS 0x3d
 
 // confg register
 #define TIMO_CONFIG_UART_EN 0x01          // Enable UART output of DMX frames (required for RDM). 0 = Disabled, 1 = Enabled
@@ -107,15 +109,15 @@ void TiMo_setDMXwindow(unsigned short window, unsigned short address, timo_t *fn
 void TiMo_setIRQ(unsigned char irq, timo_t *fn);   // enables irqs (irq mask reg)
 void TiMo_resetIRQ(unsigned char irq, timo_t *fn); // disables irq (irq mask reg)
 
-unsigned char TiMo_getIRQStatus(timo_t *fn); // return which irq flags are set
+unsigned short TiMo_getIRQStatus(timo_t *fn); // return which irq flags are set
 
 void TiMo_setExtIRQ(unsigned char irq, timo_t *fn);   // enables irqs (irq ext mask reg)
 void TiMo_resetExtIRQ(unsigned char irq, timo_t *fn); // disables irq (irq ext mask reg)
 
 unsigned char TiMo_getExtIRQStatus(timo_t *fn); // return which ext irq flags are set ()
 
-void TiMo_readDMX(unsigned char *d, unsigned short len, timo_t *fn);  // read dmx package
-void TiMo_writeDMX(unsigned char *d, unsigned short len, timo_t *fn); // writes dmx package
+unsigned char TiMo_readDMX(unsigned char *d, unsigned short len, timo_t *fn);  // read dmx package
+unsigned char TiMo_writeDMX(unsigned char *d, unsigned short len, timo_t *fn); // writes dmx package
 
 void TiMo_readRDM(unsigned char *d, unsigned char len, timo_t *fn);
 void TiMo_writeRDM(unsigned char *d, unsigned char len, timo_t *fn);
@@ -134,16 +136,19 @@ void TiMo_extAntenna(unsigned char a, timo_t *fn); // not avail in TimoTwo
 
 void TiMo_setModeTX(unsigned char a, timo_t *fn);
 
-void TiMo_setBattery(unsigned char level, timo_t *fn);
+unsigned char TiMo_setBattery(unsigned char level, timo_t *fn);
 void TiMo_setRFPower(unsigned char level, timo_t *fn);
 
-unsigned char TiMo_getStatus(timo_t *fn);
+unsigned short TiMo_getStatus(timo_t *fn);
 
 unsigned char TiMo_getRFPower(timo_t *fn);
 
 void TiMo_setOEMInfo(unsigned short vid, unsigned short pid, timo_t *fn);
 
+unsigned char TiMo_setName(char *p, timo_t *fn);
+unsigned char TiMo_getName(char *p, timo_t *fn);
+
 unsigned char TiMo_readRegP(unsigned char cmd, unsigned char *data, unsigned char len, timo_t *fn);
 unsigned char TiMo_writeRegP(unsigned char cmd, unsigned char *data, unsigned char len, timo_t *fn);
-unsigned char TiMo_readReg8(unsigned char cmd, timo_t *fn);
-void TiMo_writeReg8(unsigned char cmd, unsigned char data, timo_t *fn);
+unsigned short TiMo_readReg8(unsigned char cmd, timo_t *fn);
+unsigned char TiMo_writeReg8(unsigned char cmd, unsigned char data, timo_t *fn);
